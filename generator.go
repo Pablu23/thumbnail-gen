@@ -132,6 +132,11 @@ func GetFilter(path string) ([]TimeFilter, error) {
 			end = reg.FindString(filters[i+1])
 		}
 
+		if start == "" || end == "" {
+			break
+		}
+		// fmt.Printf("Start: %s, End: %s\n", start, end)
+
 		s, err := strconv.ParseFloat(start, 64)
 		if err != nil {
 			return nil, err
