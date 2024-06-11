@@ -16,6 +16,26 @@ type TimeFilter struct {
 	End   float64
 }
 
+func GetThumbnailSegments(path string, segments int, enableFilter bool) ([][]byte, int, error) {
+	var filters []TimeFilter
+	if enableFilter {
+		f, err := GetFilter(path)
+		if err != nil {
+			return nil, 0, err
+		}
+		filters = f
+	}
+
+	length, err := GetVideoLength(path)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	interval := length / float64(segments)
+
+	return getThumbnailUnderlying(path, 0, filters, length, int(interval), enableFilter)
+}
+
 func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, int, error) {
 	var filters []TimeFilter
 	if enableFilter {
@@ -26,18 +46,16 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFil
 		filters = f
 	}
 
-	fps, err := GetFramerate(path)
-	if err != nil {
-		return nil, 0, err
-	}
-
 	length, err := GetVideoLength(path)
 	if err != nil {
 		return nil, 0, err
 	}
 
+	return getThumbnailUnderlying(path, maxThumbnails, filters, length, intervalSeconds, enableFilter)
+}
+
+func getThumbnailUnderlying(path string, maxThumbnails int, filters []TimeFilter, length float64, intervalSeconds int, enableFilter bool) ([][]byte, int, error) {
 	buf := bytes.NewBuffer(nil)
-	currFrame := 0
 	framesExtracted := 0
 
 	var out [][]byte
@@ -47,15 +65,21 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFil
 		out = make([][]byte, 0)
 	}
 
+	// fmt.Printf("FPS: %f, Lenght: %f, Interval: %d, Filters: %t\n", fps, length, intervalSeconds, enableFilter)
+
+	var time float64 = 1
 	for {
-		time := float64(currFrame) / fps
+		fmt.Printf("Time: %f\n", time)
 		if (maxThumbnails > 0 && framesExtracted >= maxThumbnails) || time >= length {
 			break
 		}
 
-		currFrame += int(fps) * intervalSeconds
-		if enableFilter && FrameLiesWithinFilter(time, filters) {
-			continue
+		if enableFilter {
+			if ok, next := FrameLiesWithinFilter(time, filters); ok {
+				fmt.Printf("Black Frame, skipping to: %f\n", next)
+				time = next
+				continue
+			}
 		}
 
 		err := GetImage(buf, path, int(time), "png")
@@ -71,20 +95,23 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFil
 			out = append(out, b)
 		}
 
+		time += float64(intervalSeconds)
 		framesExtracted += 1
 		buf.Reset()
 	}
 	return out, framesExtracted, nil
 }
 
-func FrameLiesWithinFilter(time float64, filters []TimeFilter) bool {
+// Return true, if time is inside filter, also returns next time, when not in filter anymore.
+// If False it returns input time
+func FrameLiesWithinFilter(time float64, filters []TimeFilter) (bool, float64) {
 	for _, filter := range filters {
 		if time >= filter.Start && time <= filter.End {
-			return true
+			return true, filter.End
 		}
 
 	}
-	return false
+	return false, time
 }
 
 func GetImage(buf *bytes.Buffer, path string, timestamp int, format string) error {
