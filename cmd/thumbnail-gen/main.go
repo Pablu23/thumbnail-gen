@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	thumbnailgen "github.com/pablu23/thumbnail-gen"
 )
@@ -19,17 +17,31 @@ func main() {
 	flag.Parse()
 
 	if *pathFlag != "" {
-		thumbnails, err := thumbnailgen.GetThumbnail(*pathFlag, *intervalFlag, *maxThumbnailsFlag)
+    _, err := thumbnailgen.GetFramerate(*pathFlag)
 		if err != nil {
-			panic(err)
+			fmt.Printf("Framerate: %s\n", err)
 		}
 
-		name := filepath.Base(*pathFlag)
-		for i, thumbnail := range thumbnails {
-			err := os.WriteFile(fmt.Sprintf("%s-%d.png", name, i), thumbnail, 0600)
-			if err != nil {
-				panic(err)
-			}
+		_, err = thumbnailgen.GetVideoLength(*pathFlag)
+		if err != nil {
+			fmt.Printf("Video Length: %s\n", err)
 		}
+
+    _, err = thumbnailgen.GetFilter(*pathFlag)
+    if err != nil {
+			fmt.Printf("Filter: %s\n", err)
+		}
+		// thumbnails, err := thumbnailgen.GetThumbnail(*pathFlag, *intervalFlag, *maxThumbnailsFlag)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		//
+		// name := filepath.Base(*pathFlag)
+		// for i, thumbnail := range thumbnails {
+		// 	err := os.WriteFile(fmt.Sprintf("%s-%d.png", name, i), thumbnail, 0600)
+		// 	if err != nil {
+		// 		panic(err)
+		// 	}
+		// }
 	}
 }

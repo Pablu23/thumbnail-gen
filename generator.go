@@ -17,9 +17,13 @@ type TimeFilter struct {
 }
 
 func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, error) {
-	filters, err := GetFilter(path)
-	if err != nil {
-		return nil, err
+	var filters []TimeFilter
+	if enableFilter {
+		f, err := GetFilter(path)
+		if err != nil {
+			return nil, err
+		}
+		filters = f
 	}
 
 	fps, err := GetFramerate(path)
