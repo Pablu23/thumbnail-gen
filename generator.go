@@ -16,24 +16,24 @@ type TimeFilter struct {
 	End   float64
 }
 
-func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, error) {
+func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, int, error) {
 	var filters []TimeFilter
 	if enableFilter {
 		f, err := GetFilter(path)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		filters = f
 	}
 
 	fps, err := GetFramerate(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	length, err := GetVideoLength(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	buf := bytes.NewBuffer(nil)
@@ -60,7 +60,7 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFil
 
 		err := GetImage(buf, path, int(time), "png")
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		b := bytes.Clone(buf.Bytes())[0:buf.Len()]
@@ -74,7 +74,7 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFil
 		framesExtracted += 1
 		buf.Reset()
 	}
-	return out, nil
+	return out, framesExtracted, nil
 }
 
 func FrameLiesWithinFilter(time float64, filters []TimeFilter) bool {
