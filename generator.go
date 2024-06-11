@@ -65,19 +65,15 @@ func getThumbnailUnderlying(path string, maxThumbnails int, filters []TimeFilter
 		out = make([][]byte, 0)
 	}
 
-	// fmt.Printf("FPS: %f, Lenght: %f, Interval: %d, Filters: %t\n", fps, length, intervalSeconds, enableFilter)
-
 	var time float64 = 1
 	for {
-		fmt.Printf("Time: %f\n", time)
 		if (maxThumbnails > 0 && framesExtracted >= maxThumbnails) || time >= length {
 			break
 		}
 
 		if enableFilter {
 			if ok, next := FrameLiesWithinFilter(time, filters); ok {
-				fmt.Printf("Black Frame, skipping to: %f\n", next)
-				time = next
+				time = next + 1
 				continue
 			}
 		}
@@ -162,7 +158,6 @@ func GetFilter(path string) ([]TimeFilter, error) {
 		if start == "" || end == "" {
 			break
 		}
-		// fmt.Printf("Start: %s, End: %s\n", start, end)
 
 		s, err := strconv.ParseFloat(start, 64)
 		if err != nil {
