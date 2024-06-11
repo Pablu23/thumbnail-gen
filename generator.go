@@ -16,7 +16,7 @@ type TimeFilter struct {
 	End   float64
 }
 
-func GetThumbnail(path string, intervalSeconds int, maxThumbnails int) ([][]byte, error) {
+func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, error) {
 	filters, err := GetFilter(path)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func GetThumbnail(path string, intervalSeconds int, maxThumbnails int) ([][]byte
 		}
 
 		currFrame += int(fps) * intervalSeconds
-		if FrameLiesWithinFilter(time, filters) {
+		if enableFilter && FrameLiesWithinFilter(time, filters) {
 			continue
 		}
 
