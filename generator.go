@@ -16,9 +16,39 @@ type TimeFilter struct {
 	End   float64
 }
 
-func GetThumbnailSegments(path string, segments int, enableFilter bool) ([][]byte, int, error) {
+type Options struct {
+	Interval      int
+	Segments      int
+	UseSegments   bool
+	Format        string
+	Scale         string
+	EnableFilter  bool
+	MaxThumbnails int
+}
+
+func NewDefaultOptions() Options {
+	return Options{
+		Interval:      5,
+		Segments:      0,
+		UseSegments:   false,
+		Format:        "webp",
+		Scale:         "-1:-1",
+		EnableFilter:  true,
+		MaxThumbnails: 0,
+	}
+}
+
+func (options *Options) Apply(opts ...func(*Options)) *Options {
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	return options
+}
+
+func (opts *Options) GetThumbnail(path string) ([][]byte, int, error) {
 	var filters []TimeFilter
-	if enableFilter {
+	if opts.EnableFilter {
 		f, err := GetFilter(path)
 		if err != nil {
 			return nil, 0, err
@@ -31,30 +61,17 @@ func GetThumbnailSegments(path string, segments int, enableFilter bool) ([][]byt
 		return nil, 0, err
 	}
 
-	interval := length / float64(segments)
-
-	return getThumbnailUnderlying(path, 0, filters, length, int(interval), enableFilter)
-}
-
-func GetThumbnail(path string, intervalSeconds int, maxThumbnails int, enableFilter bool) ([][]byte, int, error) {
-	var filters []TimeFilter
-	if enableFilter {
-		f, err := GetFilter(path)
-		if err != nil {
-			return nil, 0, err
-		}
-		filters = f
+	var interval int 
+	if opts.UseSegments {
+		interval = int(length / float64(opts.Segments))
+	} else {
+    interval = opts.Interval
 	}
 
-	length, err := GetVideoLength(path)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return getThumbnailUnderlying(path, maxThumbnails, filters, length, intervalSeconds, enableFilter)
+	return GetThumbnailUnderlying(path, opts.MaxThumbnails, filters, length, interval, opts.EnableFilter, opts.Format, opts.Scale)
 }
 
-func getThumbnailUnderlying(path string, maxThumbnails int, filters []TimeFilter, length float64, intervalSeconds int, enableFilter bool) ([][]byte, int, error) {
+func GetThumbnailUnderlying(path string, maxThumbnails int, filters []TimeFilter, length float64, intervalSeconds int, enableFilter bool, format string, scale string) ([][]byte, int, error) {
 	buf := bytes.NewBuffer(nil)
 	framesExtracted := 0
 
@@ -78,7 +95,7 @@ func getThumbnailUnderlying(path string, maxThumbnails int, filters []TimeFilter
 			}
 		}
 
-		err := GetImage(buf, path, int(time), "png")
+		err := GetImage(buf, path, int(time), format, scale)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -110,10 +127,10 @@ func FrameLiesWithinFilter(time float64, filters []TimeFilter) (bool, float64) {
 	return false, time
 }
 
-func GetImage(buf *bytes.Buffer, path string, timestamp int, format string) error {
+func GetImage(buf *bytes.Buffer, path string, timestamp int, format string, scale string) error {
 	var t time.Time
 	t = t.Add(time.Duration(timestamp) * time.Second)
-	cmd := exec.Command("ffmpeg", "-ss", t.Format("15:04:05"), "-i", path, "-vframes", "1", "-c:v", format, "-f", "image2pipe", "-")
+	cmd := exec.Command("ffmpeg", "-ss", t.Format("15:04:05"), "-i", path, "-vframes", "1", "-c:v", format, "-filter:v", fmt.Sprintf("scale=%s", scale), "-f", "image2pipe", "-")
 	cmd.Stdout = buf
 	err := cmd.Run()
 	return err
